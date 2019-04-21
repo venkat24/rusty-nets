@@ -61,25 +61,6 @@ impl<T: Clone + Num> Matrix<T> {
         result
     }
 
-    pub fn map_with<F>(&self, other: Self, func: F) -> Self
-    where
-        F: Fn(T, T) -> T,
-    {
-        assert_eq!(self.rows, other.rows);
-        assert_eq!(self.cols, other.cols);
-
-        let mut result = Matrix::<T>::new(self.rows, self.cols);
-
-        for i in 0..self.rows {
-            for j in 0..self.cols {
-                let val = func(self.at(i, j), other.at(i, j));
-                result.set(i, j, val);
-            }
-        }
-
-        result
-    }
-
     pub fn map_with_by_ref<F>(&self, other: &Matrix<T>, func: F) -> Matrix<T>
     where
         F: Fn(T, T) -> T,
@@ -98,15 +79,25 @@ impl<T: Clone + Num> Matrix<T> {
 
         result
     }
+
+    pub fn map_with<F>(&self, other: Self, func: F) -> Self
+    where
+        F: Fn(T, T) -> T,
+    {
+        assert_eq!(self.rows, other.rows);
+        assert_eq!(self.cols, other.cols);
+
+        self.map_with_by_ref(&other, func)
+    }
 }
 
-/// Addition implementation for Matrix and &Matrix
+// Addition implementation for Matrix and &Matrix
 
 impl<T: Clone + Num> ops::Add<Matrix<T>> for Matrix<T> {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        self.map_with(other, |a, b| a + b)
+        &self + &other
     }
 }
 
@@ -118,13 +109,13 @@ impl<'a, 'b, T: Clone + Num> ops::Add<&'b Matrix<T>> for &'a Matrix<T> {
     }
 }
 
-/// Subtraction implementation for Matrix and &Matrix
+// Subtraction implementation for Matrix and &Matrix
 
 impl<T: Clone + Num> ops::Sub<Matrix<T>> for Matrix<T> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        self.map_with(other, |a, b| a - b)
+        &self - &other
     }
 }
 
@@ -136,27 +127,13 @@ impl<'a, 'b, T: Clone + Num> ops::Sub<&'b Matrix<T>> for &'a Matrix<T> {
     }
 }
 
-/// Matrix multiplication implementation for Matrix and &Matrix
+// Matrix multiplication implementation for Matrix and &Matrix
 
 impl<T: Clone + Num> ops::Mul<Matrix<T>> for Matrix<T> {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
-        assert_eq!(self.cols, other.rows);
-
-        let mut result = Matrix::<T>::new(self.rows, other.cols);
-
-        for i in 0..self.rows {
-            for j in 0..other.cols {
-                let mut val = result.at(i, j);
-                for k in 0..self.cols {
-                    val = val + self.at(i, k) * other.at(k, j);
-                }
-                result.set(i, j, val);
-            }
-        }
-
-        result
+        &self * &other
     }
 }
 
@@ -182,7 +159,7 @@ impl<'a, 'b, T: Clone + Num> ops::Mul<&'b Matrix<T>> for &'a Matrix<T> {
     }
 }
 
-/// Tests
+// Tests
 
 #[cfg(test)]
 mod tests {
