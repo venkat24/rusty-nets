@@ -1,8 +1,7 @@
-use num::traits::Num;
-use num::zero;
+use num::{traits::Num, zero};
 use std::ops;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Matrix<T> {
     rows: usize,
     cols: usize,
@@ -91,6 +90,15 @@ impl<T: Clone + Num> Matrix<T> {
     }
 }
 
+// Equality comparisons for Matrix
+
+impl<T: Clone + Num> PartialEq for Matrix<T> {
+    fn eq(&self, other: &Matrix<T>) -> bool {
+        // Directly compare the slices of the two vectors
+        &self.data[..] == &other.data[..]
+    }
+}
+
 // Addition implementation for Matrix and &Matrix
 
 impl<T: Clone + Num> ops::Add<Matrix<T>> for Matrix<T> {
@@ -159,6 +167,43 @@ impl<'a, 'b, T: Clone + Num> ops::Mul<&'b Matrix<T>> for &'a Matrix<T> {
     }
 }
 
+// Macros
+
+#[macro_export]
+macro_rules! sq_matrix {
+    ($elem:expr; $n:expr) => {
+        {
+            let size = $n as usize;
+            let data = vec![$elem; size * size];
+
+            Matrix {
+                rows: size,
+                cols: size,
+                data: data
+            }
+        }
+    };
+
+    ( $( $x:expr ),* ) => {
+        {
+            use crate::utils::get_integral_square_root;
+
+            let data_vec = vec![$($x),*];
+            let data_len = data_vec.len();
+
+            // Ensure that number of elements is a perfect square
+            match get_integral_square_root(data_len) {
+                Some(root) => Matrix {
+                    rows: root,
+                    cols: root,
+                    data: data_vec
+                },
+                None => panic!("Number of elements must be a perfect square..")
+            }
+        }
+    };
+}
+
 // Tests
 
 #[cfg(test)]
@@ -195,75 +240,54 @@ mod tests {
 
     #[test]
     fn map_test() {
-        let mat = Matrix {
-            rows: 2,
-            cols: 2,
-            data: vec![4, 5, 6, 7],
-        };
+        let mat = sq_matrix![4, 5, 6, 7];
+        let expected = sq_matrix![8, 10, 12, 14];
 
         let new_mat = mat.map(|val| val * 2);
-
-        assert_eq!(new_mat.at(0, 0), 8);
-        assert_eq!(new_mat.at(0, 1), 10);
-        assert_eq!(new_mat.at(1, 0), 12);
-        assert_eq!(new_mat.at(1, 1), 14);
+        assert_eq!(new_mat, expected);
     }
 
     #[test]
     fn map_with_test() {
-        let mat1 = Matrix::from(2, 2, vec![1, 2, 3, 4]);
-        let mat2 = Matrix::from(2, 2, vec![10, 20, 30, 40]);
+        let mat1 = sq_matrix![1, 2, 3, 4];
+        let mat2 = sq_matrix![10, 20, 30, 40];
+
+        let expected = sq_matrix![11, 22, 33, 44];
 
         let new_mat = mat1.map_with(mat2, |a, b| a + b);
-
-        assert_eq!(new_mat.at(0, 0), 11);
-        assert_eq!(new_mat.at(0, 1), 22);
-        assert_eq!(new_mat.at(1, 0), 33);
-        assert_eq!(new_mat.at(1, 1), 44);
+        assert_eq!(new_mat, expected);
     }
 
     #[test]
     fn addition_test() {
-        let mat1 = Matrix::from(2, 2, vec![10, 20, 30, 40]);
-        let mat2 = Matrix::from(2, 2, vec![1, 2, 3, 4]);
+        let mat1 = sq_matrix![10, 20, 30, 40];
+        let mat2 = sq_matrix![1, 2, 3, 4];
+
+        let expected = sq_matrix![11, 22, 33, 44];
 
         // By reference
         let new_mat = &mat1 + &mat2;
-
-        assert_eq!(new_mat.at(0, 0), 11);
-        assert_eq!(new_mat.at(0, 1), 22);
-        assert_eq!(new_mat.at(1, 0), 33);
-        assert_eq!(new_mat.at(1, 1), 44);
+        assert_eq!(new_mat, expected);
 
         // By value
         let new_mat = mat1 + mat2;
-
-        assert_eq!(new_mat.at(0, 0), 11);
-        assert_eq!(new_mat.at(0, 1), 22);
-        assert_eq!(new_mat.at(1, 0), 33);
-        assert_eq!(new_mat.at(1, 1), 44);
+        assert_eq!(new_mat, expected);
     }
 
     #[test]
     fn subtraction_test() {
-        let mat1 = Matrix::from(2, 2, vec![11, 22, 33, 44]);
-        let mat2 = Matrix::from(2, 2, vec![1, 2, 3, 4]);
+        let mat1 = sq_matrix![11, 22, 33, 44];
+        let mat2 = sq_matrix![1, 2, 3, 4];
+
+        let expected = sq_matrix![10, 20, 30, 40];
 
         // By reference
         let new_mat = &mat1 - &mat2;
-
-        assert_eq!(new_mat.at(0, 0), 10);
-        assert_eq!(new_mat.at(0, 1), 20);
-        assert_eq!(new_mat.at(1, 0), 30);
-        assert_eq!(new_mat.at(1, 1), 40);
+        assert_eq!(new_mat, expected);
 
         // By value
         let new_mat = mat1 - mat2;
-
-        assert_eq!(new_mat.at(0, 0), 10);
-        assert_eq!(new_mat.at(0, 1), 20);
-        assert_eq!(new_mat.at(1, 0), 30);
-        assert_eq!(new_mat.at(1, 1), 40);
+        assert_eq!(new_mat, expected);
     }
 
     #[test]
@@ -271,24 +295,14 @@ mod tests {
         let mat1 = Matrix::from(2, 3, vec![3, 4, 5, 1, 6, 8]);
         let mat2 = Matrix::from(3, 2, vec![6, 2, 9, 0, 3, 1]);
 
-        // by reference
-        let new_mat = &mat1 * &mat2;
+        let expected = sq_matrix![69, 11, 84, 10];
 
-        assert_eq!(new_mat.rows, 2);
-        assert_eq!(new_mat.cols, 2);
-        assert_eq!(new_mat.at(0, 0), 69);
-        assert_eq!(new_mat.at(0, 1), 11);
-        assert_eq!(new_mat.at(1, 0), 84);
-        assert_eq!(new_mat.at(1, 1), 10);
+        // By reference
+        let new_mat = &mat1 * &mat2;
+        assert_eq!(new_mat, expected);
 
         // By value
         let new_mat = mat1 * mat2;
-
-        assert_eq!(new_mat.rows, 2);
-        assert_eq!(new_mat.cols, 2);
-        assert_eq!(new_mat.at(0, 0), 69);
-        assert_eq!(new_mat.at(0, 1), 11);
-        assert_eq!(new_mat.at(1, 0), 84);
-        assert_eq!(new_mat.at(1, 1), 10);
+        assert_eq!(new_mat, expected);
     }
 }
